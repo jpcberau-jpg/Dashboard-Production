@@ -134,6 +134,23 @@ tbody tr:hover{background:rgba(255,255,255,.025);}
 .del-btn:hover{background:rgba(255,82,82,.3);}
 
 .section-title{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:8px;margin-top:4px;}
+/* SLICER */
+.slicer-bar{background:#0a0c14;border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.slicer-label{font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.6px;text-transform:uppercase;white-space:nowrap;}
+.slicer-dates{display:flex;flex-wrap:wrap;gap:6px;flex:1;}
+.slicer-chip{padding:4px 10px;font-size:11px;font-weight:600;border-radius:20px;border:1px solid var(--border);color:var(--muted);cursor:pointer;background:var(--card);transition:all .15s;user-select:none;white-space:nowrap;}
+.slicer-chip:hover{border-color:rgba(255,160,0,.5);color:var(--text);}
+.slicer-chip.active{background:linear-gradient(135deg,rgba(255,160,0,.25),rgba(0,255,140,.15));border-color:rgba(255,160,0,.7);color:#ffaa00;box-shadow:0 0 8px rgba(255,160,0,.2);}
+.slicer-actions{display:flex;gap:6px;}
+.slicer-btn{padding:4px 12px;font-size:10px;font-weight:700;border-radius:6px;cursor:pointer;border:none;letter-spacing:.4px;}
+.slicer-btn.all{background:rgba(255,255,255,.07);color:var(--text);}
+.slicer-btn.all:hover{background:rgba(255,255,255,.13);}
+.slicer-btn.reset{background:rgba(255,82,82,.15);color:var(--red);}
+.slicer-btn.reset:hover{background:rgba(255,82,82,.28);}
+.slicer-range{display:flex;align-items:center;gap:6px;}
+.slicer-range input{background:var(--card);border:1px solid var(--border);color:var(--text);font-size:11px;padding:4px 8px;border-radius:6px;outline:none;width:130px;color-scheme:dark;}
+.slicer-range input:focus{border-color:rgba(255,160,0,.5);}
+.slicer-sep{font-size:10px;color:var(--dim);}
 </style>
 </head>
 <body>
@@ -160,6 +177,22 @@ tbody tr:hover{background:rgba(255,255,255,.025);}
   <div class="ntab" onclick="showPage('working')">Working Hours</div>
   <div class="ntab" onclick="showPage('dist')">Distribusi JT</div>
   <div class="ntab" onclick="showPage('cont')">Contaminan</div>
+</div>
+
+
+<!-- SLICER BAR -->
+<div class="slicer-bar" id="slicerBar">
+  <span class="slicer-label">🗓 FILTER TANGGAL</span>
+  <div class="slicer-range">
+    <input type="date" id="slicerFrom" onchange="applyRangeFilter()" title="Dari tanggal">
+    <span class="slicer-sep">s/d</span>
+    <input type="date" id="slicerTo" onchange="applyRangeFilter()" title="Sampai tanggal">
+  </div>
+  <div class="slicer-dates" id="slicerChips"></div>
+  <div class="slicer-actions">
+    <button class="slicer-btn all" onclick="selectAllDates()">Semua</button>
+    <button class="slicer-btn reset" onclick="resetFilter()">Reset</button>
+  </div>
 </div>
 
 <!-- INPUT MODAL -->
@@ -626,9 +659,11 @@ function previewCont(){
 // RENDER: KPI CPP
 // ============================================================
 function renderKPI(){
-  const data=load('kpi');
+  updateSlicerBadge(); renderSlicerChips();
+  const rawData=load('kpi');
+  const data=filterByDate(rawData);
   const el=document.getElementById('kpi-content');
-  if(!data.length){ el.innerHTML=emptyState('Belum ada data KPI CPP'); return; }
+  if(!data.length){ el.innerHTML=emptyState(rawData.length?'Tidak ada data untuk tanggal yang dipilih':'Belum ada data KPI CPP'); return; }
 
   const recent=data.slice(-30);
   const last=recent[recent.length-1];
@@ -714,9 +749,11 @@ function renderKPI(){
 // RENDER: CRUSHING & HAULING
 // ============================================================
 function renderCrushing(){
-  const data=load('crush');
+  updateSlicerBadge(); renderSlicerChips();
+  const rawData=load('crush');
+  const data=filterByDate(rawData);
   const el=document.getElementById('crushing-content');
-  if(!data.length){ el.innerHTML=emptyState('Belum ada data Crushing & Hauling'); return; }
+  if(!data.length){ el.innerHTML=emptyState(rawData.length?'Tidak ada data untuk tanggal yang dipilih':'Belum ada data Crushing & Hauling'); return; }
 
   const recent=data.slice(-30);
   const labels=recent.map(r=>fmtDate(r.date));
@@ -789,9 +826,11 @@ function renderCrushing(){
 // RENDER: YEAR TO DATE
 // ============================================================
 function renderYTD(){
-  const data=load('ytd');
+  updateSlicerBadge(); renderSlicerChips();
+  const rawData=load('ytd');
+  const data=filterYTDByMonth(rawData);
   const el=document.getElementById('ytd-content');
-  if(!data.length){ el.innerHTML=emptyState('Belum ada data Year To Date'); return; }
+  if(!data.length){ el.innerHTML=emptyState(rawData.length?'Tidak ada data untuk periode yang dipilih':'Belum ada data Year To Date'); return; }
 
   const labels=data.map(r=>fmtMonth(r.month));
   const tCrush=data.map(r=>r.crush);
@@ -856,9 +895,11 @@ function renderYTD(){
 // RENDER: WORKING HOURS
 // ============================================================
 function renderWorking(){
-  const data=load('work');
+  updateSlicerBadge(); renderSlicerChips();
+  const rawData=load('work');
+  const data=filterByDate(rawData);
   const el=document.getElementById('working-content');
-  if(!data.length){ el.innerHTML=emptyState('Belum ada data Working Hours'); return; }
+  if(!data.length){ el.innerHTML=emptyState(rawData.length?'Tidak ada data untuk tanggal yang dipilih':'Belum ada data Working Hours'); return; }
 
   const recent=data.slice(-30);
   const labels=recent.map(r=>fmtDate(r.date));
@@ -955,9 +996,11 @@ function renderWorking(){
 // RENDER: DISTRIBUSI JT
 // ============================================================
 function renderDist(){
-  const data=load('dist');
+  updateSlicerBadge(); renderSlicerChips();
+  const rawData=load('dist');
+  const data=filterByDate(rawData);
   const el=document.getElementById('dist-content');
-  if(!data.length){ el.innerHTML=emptyState('Belum ada data Distribusi JT'); return; }
+  if(!data.length){ el.innerHTML=emptyState(rawData.length?'Tidak ada data untuk tanggal yang dipilih':'Belum ada data Distribusi JT'); return; }
 
   const recent=data.slice(-30);
   const labels=recent.map(r=>fmtDate(r.date));
@@ -1024,9 +1067,11 @@ function renderDist(){
 // RENDER: CONTAMINAN
 // ============================================================
 function renderCont(){
-  const data=load('cont');
+  updateSlicerBadge(); renderSlicerChips();
+  const rawData=load('cont');
+  const data=filterByDate(rawData);
   const el=document.getElementById('cont-content');
-  if(!data.length){ el.innerHTML=emptyState('Belum ada data Contaminan'); return; }
+  if(!data.length){ el.innerHTML=emptyState(rawData.length?'Tidak ada data untuk tanggal yang dipilih':'Belum ada data Contaminan'); return; }
 
   const recent=data.slice(-30);
   const labels=recent.map(r=>fmtDate(r.date));
@@ -1236,6 +1281,111 @@ function renderAll(){
   if(!active)return;
   const id=active.getAttribute('onclick').match(/'([^']+)'/)[1];
   renderPage(id);
+}
+
+
+// ============================================================
+// SLICER — Filter Tanggal
+// ============================================================
+let selectedDates = new Set(); // kosong = tampilkan semua
+let slicerMode = 'all'; // 'all' | 'pick' | 'range'
+
+// Ambil semua tanggal unik dari semua dataset harian
+function getAllDates(){
+  const sets = ['kpi','crush','work','dist','cont'];
+  const all = new Set();
+  sets.forEach(k => load(k).forEach(r => { if(r.date) all.add(r.date); }));
+  return Array.from(all).sort();
+}
+
+// Render chip tanggal di slicer bar
+function renderSlicerChips(){
+  const dates = getAllDates();
+  const container = document.getElementById('slicerChips');
+  if(!dates.length){ container.innerHTML = '<span style="font-size:11px;color:var(--dim)">Belum ada data</span>'; return; }
+
+  container.innerHTML = dates.map(d => `
+    <div class="slicer-chip ${selectedDates.has(d)?'active':''}" 
+         onclick="toggleDate('${d}')" 
+         title="${d}">
+      ${fmtDate(d)}
+    </div>`).join('');
+}
+
+function toggleDate(date){
+  slicerMode = 'pick';
+  // Clear range inputs
+  document.getElementById('slicerFrom').value = '';
+  document.getElementById('slicerTo').value = '';
+
+  if(selectedDates.has(date)){
+    selectedDates.delete(date);
+    if(selectedDates.size === 0) slicerMode = 'all'; // balik ke semua jika kosong
+  } else {
+    selectedDates.add(date);
+  }
+  renderSlicerChips();
+  renderAll();
+}
+
+function selectAllDates(){
+  selectedDates.clear();
+  slicerMode = 'all';
+  document.getElementById('slicerFrom').value = '';
+  document.getElementById('slicerTo').value = '';
+  renderSlicerChips();
+  renderAll();
+}
+
+function resetFilter(){
+  selectAllDates();
+}
+
+function applyRangeFilter(){
+  const from = document.getElementById('slicerFrom').value;
+  const to   = document.getElementById('slicerTo').value;
+  if(!from && !to){ selectAllDates(); return; }
+
+  slicerMode = 'range';
+  selectedDates.clear();
+  const dates = getAllDates();
+  dates.forEach(d => {
+    const ok = (!from || d >= from) && (!to || d <= to);
+    if(ok) selectedDates.add(d);
+  });
+
+  // Deselect chips (visual update)
+  renderSlicerChips();
+  // Highlight chips yang masuk range
+  document.querySelectorAll('.slicer-chip').forEach(el => {
+    const d = el.getAttribute('onclick').match(/'([^']+)'/)[1];
+    if(selectedDates.has(d)) el.classList.add('active');
+  });
+  renderAll();
+}
+
+// Filter function — dipanggil dari setiap render
+function filterByDate(data, dateKey='date'){
+  if(slicerMode === 'all' || selectedDates.size === 0) return data;
+  return data.filter(r => selectedDates.has(r[dateKey]));
+}
+
+// Filter untuk YTD (pakai 'month' bukan 'date')
+function filterYTDByMonth(data){
+  if(slicerMode === 'all' || selectedDates.size === 0) return data;
+  // Konversi selected dates ke bulan unik
+  const months = new Set(Array.from(selectedDates).map(d => d.slice(0,7)));
+  return data.filter(r => months.has(r.month));
+}
+
+// Badge jumlah filter aktif di slicer label
+function updateSlicerBadge(){
+  const lbl = document.querySelector('.slicer-label');
+  if(slicerMode === 'all' || selectedDates.size === 0){
+    lbl.innerHTML = '🗓 FILTER TANGGAL';
+  } else {
+    lbl.innerHTML = `🗓 FILTER TANGGAL <span style="background:rgba(255,160,0,.3);color:#ffaa00;border-radius:10px;padding:1px 7px;font-size:10px;margin-left:4px;">${selectedDates.size} dipilih</span>`;
+  }
 }
 
 // INIT
